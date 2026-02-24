@@ -399,6 +399,7 @@ describe('processArticleImages', function () {
         $project = Project::factory()->create([
             'user_id' => $user->id,
             'brand_color' => '#10B981',
+            'auto_mix_styles' => false,
         ]);
         $article = Article::factory()->create([
             'project_id' => $project->id,
@@ -418,6 +419,106 @@ describe('processArticleImages', function () {
         expect($image->metadata['style'])->toBe('watercolor');
         expect($image->metadata['original_description'])->toBe('A beautiful sunset');
         expect($image->metadata['brand_color'])->toBe('#10B981');
+    });
+
+    it('auto-mixes styles for IMAGE placeholders when auto_mix_styles is enabled', function () {
+        $user = User::factory()->create();
+        $aiProvider = AiProvider::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'anthropic',
+            'is_active' => true,
+        ]);
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'auto_mix_styles' => true,
+        ]);
+        $keyword = Keyword::factory()->create(['project_id' => $project->id]);
+
+        $content = implode("\n\n", [
+            '[IMAGE: First image - style: illustration]',
+            '[IMAGE: Second image - style: illustration]',
+            '[IMAGE: Third image - style: illustration]',
+            '[IMAGE: Fourth image - style: illustration]',
+        ]);
+
+        $article = Article::factory()->create([
+            'project_id' => $project->id,
+            'keyword_id' => $keyword->id,
+            'content' => $content,
+            'content_markdown' => $content,
+        ]);
+
+        $service = app(ArticleImageService::class);
+        $service->processArticleImages($article, $aiProvider);
+
+        $images = Image::where('article_id', $article->id)->orderBy('id')->get();
+
+        expect($images)->toHaveCount(4);
+
+        $styles = $images->pluck('metadata.style')->toArray();
+
+        // AUTO_MIX_STYLES = ['illustration', 'cinematic', 'stock_photo', 'editorial']
+        expect($styles)->toBe(['illustration', 'cinematic', 'stock_photo', 'editorial']);
+    });
+
+    it('preserves embedded styles when auto_mix_styles is disabled', function () {
+        $user = User::factory()->create();
+        $aiProvider = AiProvider::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'anthropic',
+            'is_active' => true,
+        ]);
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'auto_mix_styles' => false,
+        ]);
+        $keyword = Keyword::factory()->create(['project_id' => $project->id]);
+        $article = Article::factory()->create([
+            'project_id' => $project->id,
+            'keyword_id' => $keyword->id,
+            'content' => '[IMAGE: A scenic view - style: watercolor]',
+            'content_markdown' => '[IMAGE: A scenic view - style: watercolor]',
+        ]);
+
+        $service = app(ArticleImageService::class);
+        $service->processArticleImages($article, $aiProvider);
+
+        $image = Image::where('article_id', $article->id)->first();
+        expect($image->metadata['style'])->toBe('watercolor');
+    });
+
+    it('auto-mixes styles for both IMAGE and visual asset placeholders', function () {
+        $user = User::factory()->create();
+        $aiProvider = AiProvider::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'anthropic',
+            'is_active' => true,
+        ]);
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'auto_mix_styles' => true,
+        ]);
+        $keyword = Keyword::factory()->create(['project_id' => $project->id]);
+
+        $content = "[IMAGE: Hero shot - style: illustration]\n\n[INFOGRAPHIC: Step process]\n\n[IMAGE: Team photo - style: illustration]";
+
+        $article = Article::factory()->create([
+            'project_id' => $project->id,
+            'keyword_id' => $keyword->id,
+            'content' => $content,
+            'content_markdown' => $content,
+        ]);
+
+        $service = app(ArticleImageService::class);
+        $service->processArticleImages($article, $aiProvider);
+
+        $images = Image::where('article_id', $article->id)->orderBy('id')->get();
+
+        expect($images)->toHaveCount(3);
+
+        $styles = $images->pluck('metadata.style')->toArray();
+        // All three rotate: illustration, cinematic, stock_photo
+        expect($styles)->toBe(['illustration', 'cinematic', 'stock_photo']);
     });
 });
 

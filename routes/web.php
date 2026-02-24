@@ -53,6 +53,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('projects.articles.improve');
     Route::post('projects/{project}/articles/{article}/recalculate-seo', [ArticleController::class, 'recalculateSeo'])
         ->name('projects.articles.recalculate-seo');
+    Route::post('projects/{project}/articles/{article}/recalculate-ai-slop', [ArticleController::class, 'recalculateAiSlop'])
+        ->name('projects.articles.recalculate-ai-slop');
     Route::post('projects/{project}/articles/{article}/generate-featured-image', [ArticleController::class, 'generateFeaturedImage'])
         ->name('projects.articles.generate-featured-image');
     Route::get('projects/{project}/articles/{article}/featured-image-status', [ArticleController::class, 'featuredImageStatus'])

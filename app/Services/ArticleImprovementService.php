@@ -33,6 +33,12 @@ class ArticleImprovementService
             'optimize_meta_length' => $this->optimizeMetaLength($article, $keyword, $aiProvider, $providerConfig),
             'add_keyword_to_h2' => $this->addKeywordToH2($article, $keyword, $aiProvider, $providerConfig),
             'add_keyword_to_intro' => $this->addKeywordToIntro($article, $keyword, $aiProvider, $providerConfig),
+            'humanize_vocabulary' => $this->humanizeVocabulary($article, $aiProvider, $providerConfig),
+            'vary_sentence_structure' => $this->varySentenceStructure($article, $aiProvider, $providerConfig),
+            'remove_puffery' => $this->removePuffery($article, $aiProvider, $providerConfig),
+            'add_personal_voice' => $this->addPersonalVoice($article, $aiProvider, $providerConfig),
+            'clean_artifacts' => $this->cleanArtifacts($article),
+            'improve_transitions' => $this->improveTransitions($article, $aiProvider, $providerConfig),
             default => throw new \InvalidArgumentException("Unknown improvement type: {$improvementType}"),
         };
     }
@@ -392,6 +398,210 @@ PROMPT;
             'field' => 'content',
             'value' => $newContent,
             'message' => 'Introduction updated to include keyword',
+        ];
+    }
+
+    /**
+     * Replace AI-overused vocabulary with natural alternatives.
+     *
+     * @param  array<string, mixed>  $providerConfig
+     * @return array{field: string, value: string, message: string}
+     */
+    protected function humanizeVocabulary(Article $article, AiProvider $aiProvider, array $providerConfig): array
+    {
+        $content = $article->content_markdown ?: $article->content;
+
+        $prompt = <<<PROMPT
+Rewrite this article to replace AI-sounding vocabulary with natural, human alternatives.
+
+Target words to replace (if present): delve, tapestry, multifaceted, navigate, landscape, leverage, crucial, pivotal, foster, comprehensive, robust, streamline, harness, spearhead, paradigm, synergy, holistic, nuanced, intricate, elevate, resonate, captivate, testament, beacon, cornerstone, reimagine, unwavering, demystify, paramount, indispensable, groundbreaking, transformative, unparalleled, unprecedented.
+
+Target phrases to replace (if present): "it's worth noting", "in the realm of", "in today's world", "let's dive in", "let's delve into", "in the ever-evolving", "stands as a testament", "plays a pivotal role", "navigating the complexities", "unlock the full potential".
+
+Rules:
+- Replace flagged words/phrases with simpler, more natural alternatives
+- Keep the same meaning and information
+- Maintain the article's tone and structure
+- Do NOT change headings, links, or formatting
+- Do NOT add or remove content, only replace vocabulary
+- Return the COMPLETE article content
+PROMPT;
+
+        $newContent = $this->callAi($aiProvider, $providerConfig, $prompt."\n\nArticle content:\n".$content);
+
+        return [
+            'field' => 'content',
+            'value' => trim($newContent),
+            'message' => 'AI vocabulary replaced with natural alternatives',
+        ];
+    }
+
+    /**
+     * Vary sentence structure for more natural rhythm.
+     *
+     * @param  array<string, mixed>  $providerConfig
+     * @return array{field: string, value: string, message: string}
+     */
+    protected function varySentenceStructure(Article $article, AiProvider $aiProvider, array $providerConfig): array
+    {
+        $content = $article->content_markdown ?: $article->content;
+
+        $prompt = <<<PROMPT
+Rewrite this article to have more varied sentence structure and rhythm.
+
+Problems to fix:
+- Sentences that are all similar length (12-18 words)
+- Paragraphs that start the same way repeatedly
+- Monotonous rhythm from uniform sentence patterns
+
+What to do:
+- Mix short punchy sentences (5-8 words) with longer complex ones (20-30 words)
+- Vary paragraph openings (don't start multiple paragraphs the same way)
+- Add occasional sentence fragments for emphasis
+- Use questions, exclamations, and varied punctuation naturally
+- Keep all information, headings, links, and formatting intact
+- Return the COMPLETE article content
+PROMPT;
+
+        $newContent = $this->callAi($aiProvider, $providerConfig, $prompt."\n\nArticle content:\n".$content);
+
+        return [
+            'field' => 'content',
+            'value' => trim($newContent),
+            'message' => 'Sentence structure varied for natural rhythm',
+        ];
+    }
+
+    /**
+     * Remove hyperbolic puffery language.
+     *
+     * @param  array<string, mixed>  $providerConfig
+     * @return array{field: string, value: string, message: string}
+     */
+    protected function removePuffery(Article $article, AiProvider $aiProvider, array $providerConfig): array
+    {
+        $content = $article->content_markdown ?: $article->content;
+
+        $prompt = <<<PROMPT
+Rewrite this article to remove hyperbolic, puffery language and replace it with concrete, specific claims.
+
+Words/phrases to fix: revolutionize, game-changing, game changer, supercharge, turbocharge, unleash, unlock, empower, amplify, maximize, unmatched, unparalleled, unrivaled, best-in-class, world-class, state-of-the-art, next-generation, mission-critical, industry-leading, bleeding-edge, skyrocket.
+
+Rules:
+- Replace vague superlatives with specific, measurable claims where possible
+- Instead of "revolutionize your workflow", say something like "cut your processing time in half"
+- Instead of "game-changing results", describe the actual results
+- If no specific claim is possible, just use simpler language ("helpful" instead of "game-changing")
+- Keep all headings, links, formatting, and structure intact
+- Return the COMPLETE article content
+PROMPT;
+
+        $newContent = $this->callAi($aiProvider, $providerConfig, $prompt."\n\nArticle content:\n".$content);
+
+        return [
+            'field' => 'content',
+            'value' => trim($newContent),
+            'message' => 'Puffery language replaced with concrete claims',
+        ];
+    }
+
+    /**
+     * Add personal voice and perspective.
+     *
+     * @param  array<string, mixed>  $providerConfig
+     * @return array{field: string, value: string, message: string}
+     */
+    protected function addPersonalVoice(Article $article, AiProvider $aiProvider, array $providerConfig): array
+    {
+        $content = $article->content_markdown ?: $article->content;
+
+        $prompt = <<<PROMPT
+Rewrite this article to sound more personal and human. The current text reads too impersonal and corporate.
+
+What to add:
+- First-person perspective where appropriate ("I've found that...", "In my experience...")
+- Conversational asides and observations
+- Occasional informal language and contractions
+- Brief anecdotes or "from what I've seen" type insights
+- Direct address to the reader ("you" instead of "one" or passive voice)
+
+Rules:
+- Don't overdo it, aim for 3-5 personal touches throughout
+- Keep the article's expertise and authority intact
+- Maintain all headings, links, formatting, and structure
+- Don't make up specific personal stories, keep it general ("I've noticed...", "what works well is...")
+- Return the COMPLETE article content
+PROMPT;
+
+        $newContent = $this->callAi($aiProvider, $providerConfig, $prompt."\n\nArticle content:\n".$content);
+
+        return [
+            'field' => 'content',
+            'value' => trim($newContent),
+            'message' => 'Personal voice and perspective added',
+        ];
+    }
+
+    /**
+     * Clean technical AI artifacts (no AI call needed).
+     *
+     * @return array{field: string, value: string, message: string}
+     */
+    protected function cleanArtifacts(Article $article): array
+    {
+        $content = $article->content_markdown ?: $article->content;
+
+        // Remove ChatGPT-specific markers
+        $content = preg_replace('/turn\d+search\d*/i', '', $content);
+        $content = preg_replace('/\[oaicite:[^\]]*\]/i', '', $content);
+        $content = preg_replace('/utm_source=chatgpt[^\s)"]*/i', '', $content);
+
+        // Remove AI self-references
+        $content = preg_replace('/\bAs an AI (language )?model\b[^.]*\./i', '', $content);
+        $content = preg_replace('/\bAs a large language model\b[^.]*\./i', '', $content);
+        $content = preg_replace('/\bI (don\'t|cannot|can\'t) (access|browse|search) the internet\b[^.]*\./i', '', $content);
+
+        // Clean up double spaces and blank lines left by removals
+        $content = preg_replace('/  +/', ' ', $content);
+        $content = preg_replace('/\n{3,}/', "\n\n", $content);
+
+        return [
+            'field' => 'content',
+            'value' => trim($content),
+            'message' => 'Technical AI artifacts cleaned',
+        ];
+    }
+
+    /**
+     * Replace generic transitions with topic-specific connections.
+     *
+     * @param  array<string, mixed>  $providerConfig
+     * @return array{field: string, value: string, message: string}
+     */
+    protected function improveTransitions(Article $article, AiProvider $aiProvider, array $providerConfig): array
+    {
+        $content = $article->content_markdown ?: $article->content;
+
+        $prompt = <<<PROMPT
+Rewrite this article to replace generic, AI-sounding transitions with natural, topic-specific connections.
+
+Generic transitions to replace: Furthermore, Moreover, Additionally, Consequently, Nevertheless, In addition, As a result, On the other hand, In contrast, Similarly, Likewise, In conclusion, To summarize, Overall, Ultimately, Indeed, Notably, Significantly, Essentially, Fundamentally.
+
+What to do instead:
+- Connect ideas through the topic itself ("This pricing model also affects...", "The same principle applies when...")
+- Use cause-and-effect naturally ("Because X, you'll want to...", "This matters because...")
+- Reference previous points concretely ("Building on the setup process above...")
+- Sometimes just start a new thought without a transition at all
+- Keep all headings, links, formatting, and content intact
+- Return the COMPLETE article content
+PROMPT;
+
+        $newContent = $this->callAi($aiProvider, $providerConfig, $prompt."\n\nArticle content:\n".$content);
+
+        return [
+            'field' => 'content',
+            'value' => trim($newContent),
+            'message' => 'Generic transitions replaced with natural connections',
         ];
     }
 

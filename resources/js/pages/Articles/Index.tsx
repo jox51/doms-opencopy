@@ -66,6 +66,7 @@ interface Article {
     word_count: number;
     reading_time_minutes: number;
     seo_score: number | null;
+    ai_slop_score: number | null;
     usage_logs_sum_estimated_cost: number | null;
     keyword: Keyword | null;
     scheduled_content: ScheduledContent | null;

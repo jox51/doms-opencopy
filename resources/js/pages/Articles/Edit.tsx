@@ -4,6 +4,7 @@ import {
 } from '@/components/article-images-card';
 import { ContentEditor } from '@/components/editor';
 import InputError from '@/components/input-error';
+import { AiSlopScore } from '@/components/ai-slop-score';
 import { SeoScore } from '@/components/seo-score';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,8 +62,10 @@ interface Article {
     content: string;
     content_markdown: string;
     seo_score: number | null;
+    ai_slop_score: number | null;
     generation_metadata: {
         seo_breakdown?: SeoBreakdown;
+        ai_slop_breakdown?: Record<string, { score: number; max: number; details: Record<string, unknown> }>;
     } | null;
     project: {
         id: number;
@@ -112,6 +115,12 @@ export default function Edit({
     );
     const [currentSeoBreakdown, setCurrentSeoBreakdown] = useState(
         article.generation_metadata?.seo_breakdown,
+    );
+    const [currentAiSlopScore, setCurrentAiSlopScore] = useState<number | null>(
+        article.ai_slop_score,
+    );
+    const [currentAiSlopBreakdown, setCurrentAiSlopBreakdown] = useState(
+        article.generation_metadata?.ai_slop_breakdown,
     );
     const [featuredImage, setFeaturedImage] = useState<FeaturedImage | null>(
         initialFeaturedImage,
@@ -329,6 +338,30 @@ export default function Edit({
             toast.error('Failed to recalculate SEO score');
         } finally {
             setIsRecalculating(false);
+        }
+
+        // Also recalculate AI slop score
+        try {
+            const aiSlopResponse = await axios.post(
+                `/projects/${project.id}/articles/${article.id}/recalculate-ai-slop`,
+                {
+                    title: data.title,
+                    meta_description: data.meta_description,
+                    content: data.content,
+                },
+                {
+                    headers: {
+                        'X-CSRF-TOKEN': csrf_token,
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                },
+            );
+
+            setCurrentAiSlopScore(aiSlopResponse.data.score);
+            setCurrentAiSlopBreakdown(aiSlopResponse.data.breakdown);
+        } catch {
+            // Silently fail - AI slop is secondary to SEO
         }
     }
 
@@ -897,6 +930,30 @@ export default function Edit({
                                         score={currentSeoScore}
                                         breakdown={currentSeoBreakdown}
                                         keyword={article.keyword?.keyword}
+                                        onImprove={handleImprove}
+                                        isImproving={isImproving}
+                                    />
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* AI Slop Detection Card */}
+                        {(currentAiSlopScore !== null || currentAiSlopBreakdown) && (
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <div>
+                                        <CardTitle className="text-base">
+                                            AI Slop Detection
+                                        </CardTitle>
+                                        <CardDescription>
+                                            How natural your content reads
+                                        </CardDescription>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <AiSlopScore
+                                        score={currentAiSlopScore}
+                                        breakdown={currentAiSlopBreakdown as any}
                                         onImprove={handleImprove}
                                         isImproving={isImproving}
                                     />

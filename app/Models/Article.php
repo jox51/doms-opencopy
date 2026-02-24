@@ -31,6 +31,7 @@ class Article extends Model implements PublishableContract
         'word_count',
         'reading_time_minutes',
         'seo_score',
+        'ai_slop_score',
         'seo_analysis',
         'generation_metadata',
         'generated_at',
@@ -45,6 +46,7 @@ class Article extends Model implements PublishableContract
             'word_count' => 'integer',
             'reading_time_minutes' => 'integer',
             'seo_score' => 'integer',
+            'ai_slop_score' => 'integer',
             'generated_at' => 'datetime',
         ];
     }

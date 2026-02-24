@@ -30,6 +30,7 @@ class ArticleGenerationService
     public function __construct(
         protected Prism $prism,
         protected SeoScoreService $seoScoreService,
+        protected AiSlopDetectionService $aiSlopDetectionService,
         protected ArticleImageService $articleImageService,
         protected UsageTrackingService $usageTrackingService,
         protected YouTubeService $youTubeService,
@@ -134,6 +135,12 @@ class ArticleGenerationService
                 'article_id' => $article->id,
             ]);
             $this->seoScoreService->calculateAndSave($article);
+
+            // Calculate AI slop detection score
+            Log::info('[ArticleGeneration] Calculating AI slop score...', [
+                'article_id' => $article->id,
+            ]);
+            $this->aiSlopDetectionService->calculateAndSave($article);
 
             // Complete enrichment and restore previous status
             if ($needsEnrichment) {
@@ -532,7 +539,14 @@ PROMPT;
         if ($project->image_style) {
             $hasEnhancements = true;
             $instructions .= "**Images:** Add image placeholders throughout the article where visuals would enhance the content. Use this format:\n";
-            $instructions .= "```\n[IMAGE: Description of the image - style: {$project->image_style}]\n```\n";
+
+            if ($project->auto_mix_styles) {
+                $instructions .= "```\n[IMAGE: Description of the image - style: varied]\n```\n";
+                $instructions .= "For the style value, rotate through these styles for visual diversity: illustration, cinematic, stock_photo, editorial.\n";
+            } else {
+                $instructions .= "```\n[IMAGE: Description of the image - style: {$project->image_style}]\n```\n";
+            }
+
             $instructions .= "Include at least one featured image placeholder at the beginning and 2-3 content images throughout.\n\n";
         }
 
