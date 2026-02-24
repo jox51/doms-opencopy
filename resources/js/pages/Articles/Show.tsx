@@ -1,3 +1,4 @@
+import { AiSlopScore, AiSlopScoreMini } from '@/components/ai-slop-score';
 import Markdown from '@/components/markdown';
 import { SeoScore, SeoScoreMini } from '@/components/seo-score';
 import { Badge } from '@/components/ui/badge';
@@ -62,11 +63,13 @@ interface Article {
     word_count: number;
     reading_time_minutes: number;
     seo_score: number | null;
+    ai_slop_score: number | null;
     generation_metadata: {
         provider?: string;
         model?: string;
         keyword?: string;
         seo_breakdown?: SeoBreakdown;
+        ai_slop_breakdown?: Record<string, { score: number; max: number; details: Record<string, unknown> }>;
     } | null;
     generated_at: string | null;
     created_at: string;
@@ -221,6 +224,7 @@ export default function Show({
     const { csrf_token } = usePage<{ csrf_token: string }>().props;
     const content = article.content_markdown || article.content;
     const seoBreakdown = article.generation_metadata?.seo_breakdown;
+    const aiSlopBreakdown = article.generation_metadata?.ai_slop_breakdown;
 
     // Check if any publication is pending/publishing
     const hasPendingPublications = publications.some(
@@ -462,6 +466,11 @@ export default function Show({
                             </Card>
                             <Card>
                                 <CardContent className="pt-4">
+                                    <AiSlopScoreMini score={article.ai_slop_score} />
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent className="pt-4">
                                     <span className="text-sm font-medium">
                                         {article.generation_metadata?.model ||
                                             'Manual'}
@@ -489,6 +498,24 @@ export default function Show({
                                         score={article.seo_score}
                                         breakdown={seoBreakdown}
                                         keyword={article.keyword?.keyword}
+                                    />
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* AI Slop Detection */}
+                        {(article.ai_slop_score !== null || aiSlopBreakdown) && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>AI Slop Detection</CardTitle>
+                                    <CardDescription>
+                                        How natural your content reads
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <AiSlopScore
+                                        score={article.ai_slop_score}
+                                        breakdown={aiSlopBreakdown as any}
                                     />
                                 </CardContent>
                             </Card>

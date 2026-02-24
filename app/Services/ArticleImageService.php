@@ -95,8 +95,8 @@ class ArticleImageService
             try {
                 $style = $placeholder['style'];
 
-                // Auto-mix: rotate through curated styles for non-explicit placeholders
-                if ($autoMix && $placeholder['type'] !== 'image') {
+                // Auto-mix: rotate through curated styles for visual diversity
+                if ($autoMix) {
                     $style = self::AUTO_MIX_STYLES[$mixIndex % count(self::AUTO_MIX_STYLES)];
                     $mixIndex++;
                 }

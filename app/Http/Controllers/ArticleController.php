@@ -12,6 +12,7 @@ use App\Models\Image;
 use App\Services\ArticleImageService;
 use App\Services\ArticleImprovementService;
 use App\Services\Publishing\PublishingService;
+use App\Services\AiSlopDetectionService;
 use App\Services\SeoScoreService;
 use App\Services\UsageTrackingService;
 use App\Services\YouTubeService;
@@ -219,13 +220,40 @@ class ArticleController extends Controller
         ]);
     }
 
+    public function recalculateAiSlop(Request $request, Project $project, Article $article, AiSlopDetectionService $aiSlopDetectionService): JsonResponse
+    {
+        $this->authorize('view', $project);
+        $this->ensureArticleBelongsToProject($article, $project);
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'meta_description' => 'nullable|string|max:255',
+            'content' => 'required|string',
+        ]);
+
+        // Temporarily set the values on the article for calculation
+        $article->title = $validated['title'];
+        $article->meta_description = $validated['meta_description'] ?? '';
+        $article->content_markdown = $validated['content'];
+        $article->content = $validated['content'];
+        $article->word_count = str_word_count(strip_tags($validated['content']));
+
+        // Calculate the score without saving
+        $result = $aiSlopDetectionService->calculate($article);
+
+        return response()->json([
+            'score' => $result['score'],
+            'breakdown' => $result['breakdown'],
+        ]);
+    }
+
     public function improve(Request $request, Project $project, Article $article, ArticleImprovementService $improvementService): JsonResponse
     {
         $this->authorize('update', $project);
         $this->ensureArticleBelongsToProject($article, $project);
 
         $validated = $request->validate([
-            'improvement_type' => 'required|string|in:add_keyword_to_title,add_keyword_to_meta,add_faq_section,add_table,add_h2_headings,add_lists,optimize_title_length,optimize_meta_length,add_keyword_to_h2,add_keyword_to_intro',
+            'improvement_type' => 'required|string|in:add_keyword_to_title,add_keyword_to_meta,add_faq_section,add_table,add_h2_headings,add_lists,optimize_title_length,optimize_meta_length,add_keyword_to_h2,add_keyword_to_intro,humanize_vocabulary,vary_sentence_structure,remove_puffery,add_personal_voice,clean_artifacts,improve_transitions,restructure_template',
         ]);
 
         // Get the user's default AI provider
