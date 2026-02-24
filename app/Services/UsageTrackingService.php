@@ -17,6 +17,14 @@ class UsageTrackingService
      */
     protected const TEXT_PRICING = [
         // OpenAI models
+        'gpt-5.2' => ['input' => 2.00, 'output' => 10.00],
+        'gpt-5.2-pro' => ['input' => 15.00, 'output' => 60.00],
+        'gpt-5.1' => ['input' => 2.00, 'output' => 10.00],
+        'gpt-5-mini' => ['input' => 0.40, 'output' => 1.60],
+        'gpt-5-nano' => ['input' => 0.10, 'output' => 0.40],
+        'gpt-4.1' => ['input' => 2.00, 'output' => 8.00],
+        'gpt-4.1-mini' => ['input' => 0.40, 'output' => 1.60],
+        'gpt-4.1-nano' => ['input' => 0.10, 'output' => 0.40],
         'gpt-4o' => ['input' => 5.00, 'output' => 20.00],
         'gpt-4o-mini' => ['input' => 0.60, 'output' => 2.40],
         'gpt-4-turbo' => ['input' => 10.00, 'output' => 30.00],
@@ -24,6 +32,9 @@ class UsageTrackingService
         'gpt-3.5-turbo' => ['input' => 0.50, 'output' => 1.50],
 
         // Anthropic Claude models
+        'claude-opus-4-6' => ['input' => 5.00, 'output' => 25.00],
+        'claude-sonnet-4-6' => ['input' => 3.00, 'output' => 15.00],
+        'claude-haiku-4-5-20251001' => ['input' => 1.00, 'output' => 5.00],
         'claude-3-5-sonnet' => ['input' => 3.00, 'output' => 15.00],
         'claude-3-5-sonnet-20241022' => ['input' => 3.00, 'output' => 15.00],
         'claude-sonnet-4-5-20250929' => ['input' => 3.00, 'output' => 15.00],
@@ -45,6 +56,14 @@ class UsageTrackingService
         'llama3.2' => ['input' => 0.00, 'output' => 0.00],
         'mistral' => ['input' => 0.00, 'output' => 0.00],
         'codellama' => ['input' => 0.00, 'output' => 0.00],
+
+        // xAI Grok models
+        'grok-4' => ['input' => 3.00, 'output' => 12.00],
+        'grok-4-1-fast-reasoning' => ['input' => 3.00, 'output' => 12.00],
+        'grok-4-1-fast-non-reasoning' => ['input' => 3.00, 'output' => 12.00],
+        'grok-4-code-fast-1' => ['input' => 3.00, 'output' => 12.00],
+        'grok-3' => ['input' => 3.00, 'output' => 15.00],
+        'grok-3-mini' => ['input' => 0.30, 'output' => 0.50],
     ];
 
     /**
@@ -53,6 +72,20 @@ class UsageTrackingService
      * @var array<string, array<string, float>>
      */
     protected const IMAGE_PRICING = [
+        // GPT Image 1.5 (gpt-image-1.5)
+        'gpt-image-1.5' => [
+            'low_1024x1024' => 0.011,
+            'medium_1024x1024' => 0.042,
+            'high_1024x1024' => 0.167,
+            'low_1536x1024' => 0.016,
+            'medium_1536x1024' => 0.063,
+            'high_1536x1024' => 0.250,
+            'low_1024x1536' => 0.016,
+            'medium_1024x1536' => 0.063,
+            'high_1024x1536' => 0.250,
+            'default' => 0.17,
+        ],
+
         // GPT Image 1 (gpt-image-1)
         'gpt-image-1' => [
             'low_1024x1024' => 0.011,
@@ -89,6 +122,17 @@ class UsageTrackingService
         // Google Imagen
         'imagen-3.0-generate-002' => [
             'default' => 0.04, // Approximate pricing
+        ],
+
+        // xAI Grok Image models
+        'grok-imagine-image-pro' => [
+            'default' => 0.07,
+        ],
+        'grok-imagine-image' => [
+            'default' => 0.05,
+        ],
+        'grok-2-image-1212' => [
+            'default' => 0.05,
         ],
     ];
 

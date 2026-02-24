@@ -338,8 +338,8 @@ export default function InternalLinking({ project, pageStats }: Props) {
                                         <div className="space-y-0.5">
                                             <FieldLabel
                                                 htmlFor="cross_link_articles"
-                                                label="Cross-Link OpenCopy Articles"
-                                                tooltip="Include links to other articles you've generated with OpenCopy. This helps build a connected content cluster and keeps readers on your site."
+                                                label="Cross-Link DomsWriter Articles"
+                                                tooltip="Include links to other articles you've generated with DomsWriter. This helps build a connected content cluster and keeps readers on your site."
                                             />
                                         </div>
                                         <Switch

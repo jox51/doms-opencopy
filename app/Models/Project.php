@@ -33,6 +33,7 @@ class Project extends Model
         // Media settings
         'brand_color',
         'image_style',
+        'auto_mix_styles',
         'generate_inline_images',
         'generate_featured_image',
         'include_youtube_videos',
@@ -71,6 +72,7 @@ class Project extends Model
             'is_active' => 'boolean',
             'default_word_count' => 'integer',
             'internal_links_per_article' => 'integer',
+            'auto_mix_styles' => 'boolean',
             'generate_inline_images' => 'boolean',
             'generate_featured_image' => 'boolean',
             'include_youtube_videos' => 'boolean',

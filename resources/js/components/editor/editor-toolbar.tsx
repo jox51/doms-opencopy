@@ -16,6 +16,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { IMAGE_STYLES } from '@/lib/image-styles';
 import { cn } from '@/lib/utils';
 import { type Editor } from '@tiptap/react';
 import {
@@ -35,15 +36,6 @@ import {
     Youtube,
 } from 'lucide-react';
 import { useState } from 'react';
-
-const IMAGE_STYLES = [
-    { value: 'illustration', label: 'Illustration' },
-    { value: 'realistic', label: 'Realistic / Photo' },
-    { value: 'sketch', label: 'Sketch' },
-    { value: 'watercolor', label: 'Watercolor' },
-    { value: 'cinematic', label: 'Cinematic' },
-    { value: 'brand_text', label: 'Brand Style' },
-] as const;
 
 interface YouTubeVideo {
     id: string;

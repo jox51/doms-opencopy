@@ -45,7 +45,7 @@ class BusinessAnalyzerService
 
             $response = Http::timeout(30)
                 ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (compatible; OpenCopyBot/1.0)',
+                    'User-Agent' => 'Mozilla/5.0 (compatible; DomsWriterBot/1.0)',
                     'Accept' => 'text/html,application/xhtml+xml',
                 ])
                 ->get($url);

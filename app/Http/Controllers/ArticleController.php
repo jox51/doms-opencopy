@@ -8,6 +8,7 @@ use App\Jobs\PublishToIntegrationJob;
 use App\Models\Article;
 use App\Models\Integration;
 use App\Models\Project;
+use App\Models\Image;
 use App\Services\ArticleImageService;
 use App\Services\ArticleImprovementService;
 use App\Services\Publishing\PublishingService;
@@ -117,6 +118,20 @@ class ArticleController extends Controller
         // Get cost breakdown
         $costBreakdown = $usageTrackingService->getArticleCostBreakdown($article);
 
+        // Get inline images
+        $inlineImages = $article->images()
+            ->where('type', 'inline')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Image $img) => [
+                'id' => $img->id,
+                'url' => $img->url,
+                'alt_text' => $img->alt_text,
+                'style' => $img->metadata['style'] ?? 'illustration',
+                'width' => $img->width,
+                'height' => $img->height,
+            ]);
+
         return Inertia::render('Articles/Edit', [
             'project' => $project->only(['id', 'name', 'image_style', 'brand_color']),
             'article' => $article,
@@ -126,6 +141,7 @@ class ArticleController extends Controller
                 'width' => $featuredImage->width,
                 'height' => $featuredImage->height,
             ] : null,
+            'inlineImages' => $inlineImages,
             'costBreakdown' => $costBreakdown,
         ]);
     }
@@ -249,7 +265,7 @@ class ArticleController extends Controller
         $this->ensureArticleBelongsToProject($article, $project);
 
         $validated = $request->validate([
-            'style' => 'nullable|string|in:sketch,watercolor,illustration,cinematic,brand_text',
+            'style' => 'nullable|string|in:sketch,watercolor,illustration,cinematic,brand_text,stock_photo,editorial,photo,realistic',
         ]);
 
         // Get the project's effective image provider (Project → Account Default → Any Active)
@@ -475,7 +491,7 @@ class ArticleController extends Controller
         $this->ensureArticleBelongsToProject($article, $project);
 
         $validated = $request->validate([
-            'style' => 'required|string|in:illustration,realistic,sketch,watercolor,cinematic,brand_text,photo',
+            'style' => 'required|string|in:illustration,realistic,sketch,watercolor,cinematic,brand_text,photo,stock_photo,editorial',
             'prompt' => 'required|string|min:3|max:500',
         ]);
 
@@ -489,10 +505,10 @@ class ArticleController extends Controller
         }
 
         // Check if the provider supports image generation
-        $imageCapableProviders = ['openai', 'gemini'];
+        $imageCapableProviders = ['openai', 'gemini', 'xai'];
         if (! in_array($aiProvider->provider, $imageCapableProviders)) {
             return response()->json([
-                'error' => "Your image provider ({$aiProvider->name}) does not support AI image generation. Please configure OpenAI or Gemini as your image provider.",
+                'error' => "Your image provider ({$aiProvider->name}) does not support AI image generation. Please configure OpenAI, Gemini, or xAI as your image provider.",
             ], 422);
         }
 

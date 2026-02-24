@@ -419,6 +419,7 @@ class ProjectController extends Controller
                 'generate_featured_image',
                 'brand_color',
                 'image_style',
+                'auto_mix_styles',
                 'include_youtube_videos',
                 'include_infographic_placeholders',
             ]),
@@ -434,7 +435,8 @@ class ProjectController extends Controller
             'generate_inline_images' => 'boolean',
             'generate_featured_image' => 'boolean',
             'brand_color' => 'nullable|string|max:7',
-            'image_style' => 'string|in:illustration,sketch,watercolor,cinematic,brand-text',
+            'image_style' => 'string|in:illustration,sketch,watercolor,cinematic,brand-text,brand_text,stock_photo,editorial,photo,realistic',
+            'auto_mix_styles' => 'boolean',
             'include_youtube_videos' => 'boolean',
             'include_infographic_placeholders' => 'boolean',
         ]);

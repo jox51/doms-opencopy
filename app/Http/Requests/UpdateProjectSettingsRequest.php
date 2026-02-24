@@ -59,8 +59,9 @@ class UpdateProjectSettingsRequest extends FormRequest
             'image_style' => [
                 'nullable',
                 'string',
-                Rule::in(['illustration', 'sketch', 'watercolor', 'cinematic', 'brand-text']),
+                Rule::in(['illustration', 'sketch', 'watercolor', 'cinematic', 'brand-text', 'brand_text', 'stock_photo', 'editorial', 'photo', 'realistic']),
             ],
+            'auto_mix_styles' => ['boolean'],
 
             // Engagement - Content Enhancements
             'include_youtube_videos' => ['boolean'],

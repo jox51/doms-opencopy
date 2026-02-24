@@ -22,7 +22,7 @@ class ArticleImageService
      * Format: [IMAGE: description – style: stylename] or [IMAGE: description - style: stylename]
      * Also accepts comma separator: [IMAGE: description, style: stylename]
      */
-    protected const PLACEHOLDER_PATTERN = '/\[IMAGE:\s*(.+?)\s*(?:–|-|,)\s*style:\s*(\w+)\s*\]/iu';
+    protected const PLACEHOLDER_PATTERN = '/\[IMAGE:\s*(.+?)\s*(?:–|-|,)\s*style:\s*([^\]]+?)\s*\]/iu';
 
     /**
      * Regex pattern to match visual asset placeholders without explicit style.
@@ -47,7 +47,12 @@ class ArticleImageService
     /**
      * Providers that support image generation.
      */
-    protected const IMAGE_GENERATION_PROVIDERS = ['openai', 'gemini'];
+    protected const IMAGE_GENERATION_PROVIDERS = ['openai', 'gemini', 'xai'];
+
+    /**
+     * Curated set of styles for auto-mix rotation.
+     */
+    protected const AUTO_MIX_STYLES = ['illustration', 'cinematic', 'stock_photo', 'editorial'];
 
     protected ImageManager $imageManager;
 
@@ -83,12 +88,22 @@ class ArticleImageService
 
         $errors = [];
         $imagesGenerated = 0;
+        $autoMix = $article->project->auto_mix_styles ?? true;
+        $mixIndex = 0;
 
         foreach ($placeholders as $placeholder) {
             try {
+                $style = $placeholder['style'];
+
+                // Auto-mix: rotate through curated styles for non-explicit placeholders
+                if ($autoMix && $placeholder['type'] !== 'image') {
+                    $style = self::AUTO_MIX_STYLES[$mixIndex % count(self::AUTO_MIX_STYLES)];
+                    $mixIndex++;
+                }
+
                 $image = $this->generateInlineImage(
                     $placeholder['description'],
-                    $placeholder['style'],
+                    $style,
                     $article,
                     $aiProvider
                 );
@@ -133,7 +148,7 @@ class ArticleImageService
             $placeholders[] = [
                 'full_match' => $match[0],
                 'description' => trim($match[1]),
-                'style' => strtolower(trim($match[2])),
+                'style' => $this->normalizeStyle($match[2]),
                 'type' => 'image',
             ];
         }
@@ -156,6 +171,44 @@ class ArticleImageService
         }
 
         return $placeholders;
+    }
+
+    /**
+     * Normalize a style value from LLM output to a valid internal style.
+     *
+     * Handles hyphen/underscore inconsistencies and common LLM deviations
+     * like multi-word styles (e.g., "vibrant digital art" -> "illustration").
+     */
+    protected function normalizeStyle(string $style): string
+    {
+        $normalized = str_replace('-', '_', strtolower(trim($style)));
+
+        $validStyles = ['sketch', 'watercolor', 'illustration', 'cinematic', 'brand_text', 'photo', 'realistic', 'stock_photo', 'editorial'];
+        if (in_array($normalized, $validStyles)) {
+            return $normalized;
+        }
+
+        // Map common LLM-generated multi-word styles to valid styles
+        $keywords = [
+            'sketch' => 'sketch', 'pencil' => 'sketch', 'hand drawn' => 'sketch',
+            'watercolor' => 'watercolor', 'watercolour' => 'watercolor',
+            'cinematic' => 'cinematic', 'dramatic' => 'cinematic',
+            'stock' => 'stock_photo', 'people' => 'stock_photo', 'lifestyle' => 'stock_photo',
+            'editorial' => 'editorial', 'documentary' => 'editorial', 'journalistic' => 'editorial',
+            'photo' => 'photo', 'realistic' => 'realistic', 'photograph' => 'photo',
+            'brand' => 'brand_text', 'corporate' => 'brand_text',
+            'illustration' => 'illustration', 'digital art' => 'illustration',
+            'vector' => 'illustration', 'flat' => 'illustration',
+        ];
+
+        $lowerStyle = strtolower(trim($style));
+        foreach ($keywords as $keyword => $mappedStyle) {
+            if (str_contains($lowerStyle, $keyword)) {
+                return $mappedStyle;
+            }
+        }
+
+        return 'illustration';
     }
 
     /**
@@ -187,11 +240,8 @@ class ArticleImageService
         $project = $article->project;
         $brandColor = $project->brand_color ?? '#3B82F6';
 
-        // Validate style
-        $validStyles = ['sketch', 'watercolor', 'illustration', 'cinematic', 'brand_text', 'photo', 'realistic'];
-        if (! in_array($style, $validStyles)) {
-            $style = 'illustration';
-        }
+        // Normalize style (handles multi-word LLM styles and brand-text hyphen)
+        $style = $this->normalizeStyle($style);
 
         // Build the prompt
         $prompt = $this->buildPrompt($description, $style, $brandColor);
@@ -285,6 +335,18 @@ class ArticleImageService
                 $prompt .= "Minimalist design with {$colorName} brand colors. ";
                 break;
 
+            case 'stock_photo':
+                $prompt .= 'Professional stock photography with real people. Natural poses, authentic expressions. ';
+                $prompt .= 'High-quality lifestyle photography, Unsplash/Pexels aesthetic. ';
+                $prompt .= 'Natural lighting, shallow depth of field, real human subjects. ';
+                break;
+
+            case 'editorial':
+                $prompt .= 'Editorial documentary photography. Candid, journalistic feel. ';
+                $prompt .= 'Real people in authentic situations, magazine-quality composition. ';
+                $prompt .= 'Natural lighting, storytelling through imagery, photojournalistic style. ';
+                break;
+
             case 'photo':
             case 'realistic':
                 $prompt .= 'Photorealistic style. High quality stock photo look. ';
@@ -319,11 +381,18 @@ class ArticleImageService
 
         $imageModel = $aiProvider->model;
 
+        // xAI's image API is OpenAI-compatible, so route through OpenAI's Prism handler
+        $prismProvider = $aiProvider->provider;
+        if ($prismProvider === 'xai') {
+            $prismProvider = 'openai';
+            $config['url'] = $config['url'] ?? 'https://api.x.ai/v1';
+        }
+
         // Provider-specific options for better quality
         $providerOptions = $this->getProviderOptions($aiProvider, $imageModel);
 
         $response = $this->prism->image()
-            ->using($aiProvider->provider, $imageModel, $config)
+            ->using($prismProvider, $imageModel, $config)
             ->withClientOptions(['timeout' => 120])
             ->withProviderOptions($providerOptions)
             ->withPrompt($prompt)
@@ -460,9 +529,10 @@ class ArticleImageService
     protected function getProviderOptions(AiProvider $aiProvider, string $imageModel): array
     {
         return match (true) {
-            $imageModel === 'gpt-image-1' => ['quality' => 'high', 'size' => '1536x1024'],
+            in_array($imageModel, ['gpt-image-1.5', 'gpt-image-1']) => ['quality' => 'high', 'size' => '1536x1024'],
             str_starts_with($imageModel, 'dall-e') => ['quality' => 'hd', 'style' => 'natural', 'size' => '1792x1024'],
             $aiProvider->provider === 'gemini' => ['aspect_ratio' => '3:2'],
+            $aiProvider->provider === 'xai' => ['response_format' => 'url'],
             default => [],
         };
     }

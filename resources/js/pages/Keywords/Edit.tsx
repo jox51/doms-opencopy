@@ -53,7 +53,7 @@ export default function Edit({ project, keyword }: Props) {
         },
     ];
 
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, transform, put, processing, errors } = useForm({
         keyword: keyword.keyword,
         secondary_keywords: keyword.secondary_keywords?.join(', ') || '',
         search_intent: keyword.search_intent || '',
@@ -61,7 +61,7 @@ export default function Edit({ project, keyword }: Props) {
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        const formData = {
+        transform((data) => ({
             ...data,
             secondary_keywords: data.secondary_keywords
                 ? data.secondary_keywords
@@ -70,10 +70,8 @@ export default function Edit({ project, keyword }: Props) {
                       .filter((k) => k)
                 : [],
             search_intent: data.search_intent || null,
-        };
-        put(`/projects/${project.id}/keywords/${keyword.id}`, {
-            data: formData,
-        });
+        }));
+        put(`/projects/${project.id}/keywords/${keyword.id}`);
     }
 
     function handleDelete() {

@@ -26,6 +26,7 @@ interface Project {
     generate_featured_image: boolean;
     brand_color: string | null;
     image_style: string;
+    auto_mix_styles: boolean;
     include_youtube_videos: boolean;
     include_infographic_placeholders: boolean;
 }
@@ -35,29 +36,7 @@ interface Props {
     hasYouTubeApiKey: boolean;
 }
 
-const imageStyleOptions = [
-    {
-        value: 'illustration',
-        label: 'Illustration',
-        description: 'Clean, modern illustrations',
-    },
-    { value: 'sketch', label: 'Sketch', description: 'Hand-drawn style' },
-    {
-        value: 'watercolor',
-        label: 'Watercolor',
-        description: 'Artistic watercolor effect',
-    },
-    {
-        value: 'cinematic',
-        label: 'Cinematic',
-        description: 'Dramatic, movie-like visuals',
-    },
-    {
-        value: 'brand-text',
-        label: 'Brand Text',
-        description: 'Title overlaid on brand color',
-    },
-];
+import { IMAGE_STYLES } from '@/lib/image-styles';
 
 export default function Media({ project, hasYouTubeApiKey }: Props) {
     const breadcrumbs: BreadcrumbItem[] = [
@@ -73,6 +52,7 @@ export default function Media({ project, hasYouTubeApiKey }: Props) {
             generate_featured_image: project.generate_featured_image ?? true,
             brand_color: project.brand_color ?? '',
             image_style: project.image_style ?? 'illustration',
+            auto_mix_styles: project.auto_mix_styles ?? true,
             include_youtube_videos: project.include_youtube_videos ?? false,
             include_infographic_placeholders:
                 project.include_infographic_placeholders ?? false,
@@ -311,7 +291,7 @@ export default function Media({ project, hasYouTubeApiKey }: Props) {
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {imageStyleOptions.map(
+                                                {IMAGE_STYLES.map(
                                                     (style) => (
                                                         <SelectItem
                                                             key={style.value}
@@ -335,6 +315,26 @@ export default function Media({ project, hasYouTubeApiKey }: Props) {
                                             message={errors.image_style}
                                         />
                                     </div>
+                                </div>
+
+                                <div className="flex items-center justify-between rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FieldLabel
+                                            htmlFor="auto_mix_styles"
+                                            label="Auto-Mix Styles"
+                                            tooltip="When enabled, inline images in new articles will automatically rotate through a variety of styles (illustration, cinematic, stock photo, editorial) for visual diversity. When disabled, all images use the selected style above."
+                                        />
+                                    </div>
+                                    <Switch
+                                        id="auto_mix_styles"
+                                        checked={data.auto_mix_styles}
+                                        onCheckedChange={(checked) =>
+                                            setData(
+                                                'auto_mix_styles',
+                                                checked,
+                                            )
+                                        }
+                                    />
                                 </div>
                             </div>
                         </>

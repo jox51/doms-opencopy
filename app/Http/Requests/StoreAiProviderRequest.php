@@ -14,7 +14,7 @@ class StoreAiProviderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'provider' => ['required', 'string', 'in:openai,anthropic,ollama,groq,mistral,openrouter,gemini'],
+            'provider' => ['required', 'string', 'in:openai,anthropic,ollama,groq,xai,mistral,openrouter,gemini'],
             'name' => ['required', 'string', 'max:255'],
             'api_key' => ['nullable', 'string', 'max:500'],
             'api_endpoint' => ['nullable', 'url', 'max:500'],

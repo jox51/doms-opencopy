@@ -1,3 +1,7 @@
+import {
+    ArticleImagesCard,
+    type InlineImage,
+} from '@/components/article-images-card';
 import { ContentEditor } from '@/components/editor';
 import InputError from '@/components/input-error';
 import { SeoScore } from '@/components/seo-score';
@@ -18,6 +22,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { IMAGE_STYLES } from '@/lib/image-styles';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
@@ -72,13 +77,7 @@ interface Article {
 interface Project {
     id: number;
     name: string;
-    image_style:
-        | 'sketch'
-        | 'watercolor'
-        | 'illustration'
-        | 'cinematic'
-        | 'brand_text'
-        | null;
+    image_style: string | null;
     brand_color: string | null;
 }
 
@@ -93,12 +92,14 @@ interface Props {
     project: Project;
     article: Article;
     featuredImage: FeaturedImage | null;
+    inlineImages: InlineImage[];
 }
 
 export default function Edit({
     project,
     article,
     featuredImage: initialFeaturedImage,
+    inlineImages: initialInlineImages,
 }: Props) {
     const [copied, setCopied] = useState(false);
     const [isImproving, setIsImproving] = useState(false);
@@ -117,6 +118,9 @@ export default function Edit({
     );
     const [selectedStyle, setSelectedStyle] = useState<string>(
         project.image_style || 'illustration',
+    );
+    const [inlineImages, setInlineImages] = useState<InlineImage[]>(
+        initialInlineImages || [],
     );
     const { csrf_token } = usePage<{ csrf_token: string }>().props;
 
@@ -430,6 +434,34 @@ export default function Edit({
         }
     }
 
+    const handleInlineImageRegenerated = useCallback(
+        (imageId: number, newUrl: string, newAlt: string, style: string) => {
+            // Capture old URL before state update to avoid stale closure
+            const oldImage = inlineImages.find((img) => img.id === imageId);
+            const oldUrl = oldImage?.url;
+
+            // Update sidebar state
+            setInlineImages((prev) =>
+                prev.map((img) =>
+                    img.id === imageId
+                        ? { ...img, url: newUrl, alt_text: newAlt, style }
+                        : img,
+                ),
+            );
+
+            // Update the editor content by replacing the old image URL in markdown
+            // This keeps TipTap's document model in sync (avoids direct DOM manipulation)
+            if (oldUrl && oldUrl !== newUrl) {
+                const updatedContent = data.content.replaceAll(
+                    oldUrl,
+                    newUrl,
+                );
+                setData('content', updatedContent);
+            }
+        },
+        [inlineImages, data.content, setData],
+    );
+
     const enrichmentPollingRef = useRef<ReturnType<typeof setInterval> | null>(
         null,
     );
@@ -730,21 +762,14 @@ export default function Edit({
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="illustration">
-                                                Illustration
-                                            </SelectItem>
-                                            <SelectItem value="sketch">
-                                                Sketch
-                                            </SelectItem>
-                                            <SelectItem value="watercolor">
-                                                Watercolor
-                                            </SelectItem>
-                                            <SelectItem value="cinematic">
-                                                Cinematic
-                                            </SelectItem>
-                                            <SelectItem value="brand_text">
-                                                Brand Text
-                                            </SelectItem>
+                                            {IMAGE_STYLES.map((s) => (
+                                                <SelectItem
+                                                    key={s.value}
+                                                    value={s.value}
+                                                >
+                                                    {s.label}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -791,6 +816,15 @@ export default function Edit({
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Article Images Card */}
+                        <ArticleImagesCard
+                            images={inlineImages}
+                            projectId={project.id}
+                            articleId={article.id}
+                            csrfToken={csrf_token}
+                            onImageRegenerated={handleInlineImageRegenerated}
+                        />
 
                         {/* Enrich Content Card */}
                         <Card>

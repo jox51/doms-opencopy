@@ -111,7 +111,10 @@ class AiProviderController extends Controller
                 'value' => 'openai',
                 'label' => 'OpenAI',
                 'models' => [
-                    // GPT-5.1 (Latest)
+                    // GPT-5.2 (Latest)
+                    'gpt-5.2',
+                    'gpt-5.2-pro',
+                    // GPT-5.1
                     'gpt-5.1',
                     // GPT-5 Family
                     'gpt-5-mini',
@@ -127,7 +130,7 @@ class AiProviderController extends Controller
                     'gpt-4o',
                     'gpt-4o-mini',
                 ],
-                'imageModels' => ['gpt-image-1', 'dall-e-3'],
+                'imageModels' => ['gpt-image-1.5', 'gpt-image-1', 'dall-e-3'],
                 'requiresApiKey' => true,
                 'supportsCustomEndpoint' => true,
             ],
@@ -135,11 +138,15 @@ class AiProviderController extends Controller
                 'value' => 'anthropic',
                 'label' => 'Anthropic',
                 'models' => [
+                    // Claude 4.6 (Latest)
+                    'claude-opus-4-6',
+                    'claude-sonnet-4-6',
+                    // Claude 4.5
+                    'claude-haiku-4-5-20251001',
+                    // Legacy
                     'claude-sonnet-4-20250514',
                     'claude-opus-4-20250514',
                     'claude-3-5-sonnet-20241022',
-                    'claude-3-5-haiku-20241022',
-                    'claude-3-opus-20240229',
                 ],
                 'imageModels' => [],
                 'requiresApiKey' => true,
@@ -172,8 +179,38 @@ class AiProviderController extends Controller
             [
                 'value' => 'groq',
                 'label' => 'Groq',
-                'models' => ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
+                'models' => [
+                    // Production - Text
+                    'llama-3.3-70b-versatile',
+                    'llama-3.1-8b-instant',
+                    // Production - OpenAI OSS
+                    'openai/gpt-oss-120b',
+                    'openai/gpt-oss-20b',
+                    // Preview
+                    'meta-llama/llama-4-scout-17b-16e-instruct',
+                    'qwen/qwen3-32b',
+                    'moonshotai/kimi-k2-instruct-0905',
+                ],
                 'imageModels' => [],
+                'requiresApiKey' => true,
+                'supportsCustomEndpoint' => false,
+            ],
+            [
+                'value' => 'xai',
+                'label' => 'xAI (Grok)',
+                'models' => [
+                    'grok-4',
+                    'grok-4-1-fast-reasoning',
+                    'grok-4-1-fast-non-reasoning',
+                    'grok-4-code-fast-1',
+                    'grok-3',
+                    'grok-3-mini',
+                ],
+                'imageModels' => [
+                    'grok-imagine-image-pro',
+                    'grok-imagine-image',
+                    'grok-2-image-1212',
+                ],
                 'requiresApiKey' => true,
                 'supportsCustomEndpoint' => false,
             ],
@@ -188,7 +225,7 @@ class AiProviderController extends Controller
             [
                 'value' => 'openrouter',
                 'label' => 'OpenRouter',
-                'models' => ['openai/gpt-5.1', 'openai/gpt-5-mini', 'openai/gpt-4.1', 'openai/gpt-4o', 'anthropic/claude-sonnet-4', 'anthropic/claude-3.5-sonnet', 'meta-llama/llama-3.3-70b'],
+                'models' => ['openai/gpt-5.2', 'openai/gpt-5.1', 'openai/gpt-5-mini', 'openai/gpt-4.1', 'openai/gpt-4o', 'anthropic/claude-opus-4-6', 'anthropic/claude-sonnet-4-6', 'anthropic/claude-sonnet-4', 'meta-llama/llama-3.3-70b'],
                 'imageModels' => [],
                 'requiresApiKey' => true,
                 'supportsCustomEndpoint' => false,

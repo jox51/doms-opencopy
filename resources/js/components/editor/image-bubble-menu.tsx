@@ -14,6 +14,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { IMAGE_STYLES } from '@/lib/image-styles';
 import { type Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { ImageIcon, Loader2, Pencil, RefreshCw, Trash2 } from 'lucide-react';
@@ -29,15 +30,6 @@ interface ImageBubbleMenuProps {
     }) => Promise<string | null>;
     isRegenerating?: boolean;
 }
-
-const IMAGE_STYLES = [
-    { value: 'illustration', label: 'Illustration' },
-    { value: 'realistic', label: 'Realistic / Photo' },
-    { value: 'sketch', label: 'Sketch' },
-    { value: 'watercolor', label: 'Watercolor' },
-    { value: 'cinematic', label: 'Cinematic' },
-    { value: 'brand_text', label: 'Brand Style' },
-] as const;
 
 export function ImageBubbleMenu({
     editor,

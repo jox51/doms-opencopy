@@ -3,6 +3,8 @@
 @import '@fontsource/geist-sans/500.css';
 @import '@fontsource/geist-sans/600.css';
 @import '@fontsource/geist-sans/700.css';
+@import '@fontsource/playfair-display/700.css';
+@import '@fontsource/playfair-display/700-italic.css';
 @plugin '@tailwindcss/typography';
 
 @import 'tw-animate-css';
@@ -16,6 +18,8 @@
     --font-sans:
         'Geist Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
         'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-serif:
+        'Playfair Display', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -309,4 +313,86 @@
 .dark .day-cell.drag-over {
     background-color: oklch(0.7 0.15 250 / 0.2) !important;
     box-shadow: inset 0 0 0 2px oklch(0.7 0.15 250 / 0.4);
+}
+
+/* Aurora Luxe - Landing Page Animations */
+@keyframes aurora-float-1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -25px) scale(1.05); }
+    66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+@keyframes aurora-float-2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-25px, 20px) scale(0.95); }
+    66% { transform: translate(20px, -15px) scale(1.05); }
+}
+
+@keyframes aurora-float-3 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(20px, 20px) scale(1.03); }
+    66% { transform: translate(-15px, -20px) scale(0.97); }
+}
+
+@keyframes gradient-shimmer {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px -5px rgba(245, 158, 11, 0.4); }
+    50% { box-shadow: 0 0 35px -5px rgba(245, 158, 11, 0.6); }
+}
+
+.aurora-blob-1 {
+    animation: aurora-float-1 10s ease-in-out infinite;
+}
+
+.aurora-blob-2 {
+    animation: aurora-float-2 12s ease-in-out infinite;
+}
+
+.aurora-blob-3 {
+    animation: aurora-float-3 11s ease-in-out infinite;
+}
+
+.gradient-shimmer-text {
+    background-size: 200% auto;
+    animation: gradient-shimmer 4s ease infinite;
+}
+
+.pulse-glow-btn {
+    animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Scroll reveal utility */
+.reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal-on-scroll.revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aurora-blob-1,
+    .aurora-blob-2,
+    .aurora-blob-3 {
+        animation: none;
+    }
+    .gradient-shimmer-text {
+        animation: none;
+    }
+    .pulse-glow-btn {
+        animation: none;
+    }
+    .reveal-on-scroll {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
 }

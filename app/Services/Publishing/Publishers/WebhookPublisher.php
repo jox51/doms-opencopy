@@ -167,7 +167,7 @@ class WebhookPublisher extends AbstractPublisher
             'Authorization' => "Bearer {$accessToken}",
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-            'User-Agent' => 'OpenCopy/1.0',
+            'User-Agent' => 'DomsWriter/1.0',
         ];
 
         // Allow custom headers from settings

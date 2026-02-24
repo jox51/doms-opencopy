@@ -38,7 +38,7 @@ export default function Create({ project }: Props) {
         { title: 'Create', href: `/projects/${project.id}/keywords/create` },
     ];
 
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, transform, post, processing, errors } = useForm({
         keyword: '',
         secondary_keywords: '',
         search_intent: '',
@@ -46,7 +46,7 @@ export default function Create({ project }: Props) {
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        const formData = {
+        transform((data) => ({
             ...data,
             secondary_keywords: data.secondary_keywords
                 ? data.secondary_keywords
@@ -55,10 +55,8 @@ export default function Create({ project }: Props) {
                       .filter((k) => k)
                 : [],
             search_intent: data.search_intent || null,
-        };
-        post(`/projects/${project.id}/keywords`, {
-            data: formData,
-        });
+        }));
+        post(`/projects/${project.id}/keywords`);
     }
 
     return (

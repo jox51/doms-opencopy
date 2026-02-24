@@ -1615,7 +1615,7 @@ export default function Create() {
                                                                 e.target.value,
                                                             );
                                                         }}
-                                                        placeholder="e.g., OpenCopy AI"
+                                                        placeholder="e.g., DomsWriter"
                                                     />
                                                     <InputError
                                                         message={

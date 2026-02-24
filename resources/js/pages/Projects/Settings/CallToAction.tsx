@@ -104,7 +104,7 @@ export default function CallToAction({ project }: Props) {
                                                     e.target.value,
                                                 )
                                             }
-                                            placeholder="e.g., OpenCopy"
+                                            placeholder="e.g., DomsWriter"
                                             maxLength={100}
                                         />
                                         <InputError

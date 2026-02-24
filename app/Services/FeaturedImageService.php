@@ -21,7 +21,7 @@ class FeaturedImageService
     /**
      * Providers that support image generation via Prism.
      */
-    protected const IMAGE_GENERATION_PROVIDERS = ['openai', 'gemini'];
+    protected const IMAGE_GENERATION_PROVIDERS = ['openai', 'gemini', 'xai'];
 
     protected ImageManager $imageManager;
 
@@ -40,7 +40,7 @@ class FeaturedImageService
     public function generate(Article $article, AiProvider $aiProvider, ?string $styleOverride = null): array
     {
         $project = $article->project;
-        $style = $styleOverride ?? $project->image_style ?? 'illustration';
+        $style = str_replace('-', '_', $styleOverride ?? $project->image_style ?? 'illustration');
         $brandColor = $project->brand_color ?? '#3B82F6';
 
         // Delete existing featured image if any
@@ -143,11 +143,18 @@ class FeaturedImageService
         // Determine the image model based on provider
         $imageModel = $this->getImageModel($aiProvider);
 
+        // xAI's image API is OpenAI-compatible, so route through OpenAI's Prism handler
+        $prismProvider = $aiProvider->provider;
+        if ($prismProvider === 'xai') {
+            $prismProvider = 'openai';
+            $providerConfig['url'] = $providerConfig['url'] ?? 'https://api.x.ai/v1';
+        }
+
         // Provider-specific options for better quality
         $providerOptions = $this->getProviderOptions($aiProvider, $imageModel);
 
         $response = $this->prism->image()
-            ->using($aiProvider->provider, $imageModel, $providerConfig)
+            ->using($prismProvider, $imageModel, $providerConfig)
             ->withClientOptions(['timeout' => 120])
             ->withProviderOptions($providerOptions)
             ->withPrompt($prompt)
@@ -215,9 +222,10 @@ class FeaturedImageService
     protected function getProviderOptions(AiProvider $aiProvider, string $imageModel): array
     {
         return match (true) {
-            $imageModel === 'gpt-image-1' => ['quality' => 'high', 'size' => '1536x1024'],
+            in_array($imageModel, ['gpt-image-1.5', 'gpt-image-1']) => ['quality' => 'high', 'size' => '1536x1024'],
             str_starts_with($imageModel, 'dall-e') => ['quality' => 'hd', 'style' => 'natural', 'size' => '1792x1024'],
             $aiProvider->provider === 'gemini' => ['aspect_ratio' => '16:9'],
+            $aiProvider->provider === 'xai' => ['response_format' => 'url'],
             default => [],
         };
     }
@@ -292,6 +300,8 @@ class FeaturedImageService
                 }
                 break;
 
+            case 'stock_photo':
+            case 'editorial':
             case 'cinematic':
             case 'brand_text':
                 // Bold rectangles around edges
@@ -637,6 +647,29 @@ class FeaturedImageService
     {
         $keyword = $article->keyword?->keyword ?? 'professional';
         $colorName = $this->getColorName($brandColor);
+
+        // Photorealistic styles use entirely different prompts (no marble desk)
+        if ($style === 'stock_photo') {
+            $basePrompt = "Professional stock photography related to {$keyword}. ";
+            $basePrompt .= 'Real people in natural settings, authentic poses and expressions. ';
+            $basePrompt .= 'High-quality lifestyle photography, warm natural lighting. ';
+            $basePrompt .= 'Shallow depth of field, bokeh background. Unsplash/Pexels aesthetic. ';
+            $basePrompt .= 'NO text, words, or readable writing in the image. ';
+            $basePrompt .= 'Leave space in the composition for text overlay.';
+
+            return $basePrompt;
+        }
+
+        if ($style === 'editorial') {
+            $basePrompt = "Editorial documentary photography about {$keyword}. ";
+            $basePrompt .= 'Candid journalistic style with real people in authentic situations. ';
+            $basePrompt .= 'Magazine-quality composition, natural lighting, storytelling imagery. ';
+            $basePrompt .= 'Photojournalistic approach, genuine emotions and interactions. ';
+            $basePrompt .= 'NO text, words, or readable writing in the image. ';
+            $basePrompt .= 'Leave space in the composition for text overlay.';
+
+            return $basePrompt;
+        }
 
         // Concept: almost empty white marble with tiny corner accents only
         $basePrompt = 'Clean white marble desk, top-down photography. ';
