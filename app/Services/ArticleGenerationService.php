@@ -351,6 +351,9 @@ PROMPT;
             $prompt .= "\n## Brand Voice & Guidelines\n{$project->brand_guidelines}\n";
         }
 
+        // Add provider-specific instructions (e.g., opinionated voice for xAI Grok)
+        $prompt .= $this->buildProviderSpecificInstructions();
+
         $prompt .= <<<'PROMPT'
 
 ## Output Format
@@ -375,6 +378,31 @@ meta_description: [Action-oriented description with keyword - exactly 150-160 ch
 PROMPT;
 
         return $prompt;
+    }
+
+    protected function buildProviderSpecificInstructions(): string
+    {
+        return match ($this->aiProvider->provider) {
+            'xai' => $this->buildXaiInstructions(),
+            default => '',
+        };
+    }
+
+    protected function buildXaiInstructions(): string
+    {
+        return <<<'PROMPT'
+
+## Voice & Stance (Grok-Specific)
+You are not a neutral Wikipedia summarizer. You are an expert with OPINIONS. Follow these directives:
+
+1. **Take a clear position**: Every article should have a discernible point of view. If comparing options, declare a winner. If explaining a strategy, state whether it actually works or is overrated.
+2. **Challenge conventional wisdom**: Where mainstream advice is wrong, lazy, or outdated, say so directly. Explain why the common take is flawed and what the reader should think instead.
+3. **No fence-sitting**: Do NOT use phrases like "it depends on your needs," "there are pros and cons to both," or "on the other hand." Pick a side. Readers came for guidance, not a list of trade-offs they could have written themselves.
+4. **Bold, direct language**: Use confident declarative statements. Say "X is a waste of money" not "X may not be the most cost-effective option for some users." Say "Do this" not "You might want to consider doing this."
+5. **Kill the qualifiers**: Eliminate weasel phrases: "arguably," "it could be said," "some might argue," "in many cases." State your claim and back it with evidence.
+6. **Stay factually grounded**: Opinionated does NOT mean inaccurate. Every strong claim must be supportable. Being wrong loudly is worse than being right quietly. If you are uncertain, acknowledge the uncertainty briefly and then still give your best take.
+
+PROMPT;
     }
 
     protected function buildUserPrompt(): string

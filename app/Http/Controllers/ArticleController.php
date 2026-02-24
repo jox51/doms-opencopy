@@ -253,7 +253,7 @@ class ArticleController extends Controller
         $this->ensureArticleBelongsToProject($article, $project);
 
         $validated = $request->validate([
-            'improvement_type' => 'required|string|in:add_keyword_to_title,add_keyword_to_meta,add_faq_section,add_table,add_h2_headings,add_lists,optimize_title_length,optimize_meta_length,add_keyword_to_h2,add_keyword_to_intro,humanize_vocabulary,vary_sentence_structure,remove_puffery,add_personal_voice,clean_artifacts,improve_transitions',
+            'improvement_type' => 'required|string|in:add_keyword_to_title,add_keyword_to_meta,add_faq_section,add_table,add_h2_headings,add_lists,optimize_title_length,optimize_meta_length,add_keyword_to_h2,add_keyword_to_intro,humanize_vocabulary,vary_sentence_structure,remove_puffery,add_personal_voice,clean_artifacts,improve_transitions,restructure_template',
         ]);
 
         // Get the user's default AI provider

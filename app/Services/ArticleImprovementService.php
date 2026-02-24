@@ -39,6 +39,7 @@ class ArticleImprovementService
             'add_personal_voice' => $this->addPersonalVoice($article, $aiProvider, $providerConfig),
             'clean_artifacts' => $this->cleanArtifacts($article),
             'improve_transitions' => $this->improveTransitions($article, $aiProvider, $providerConfig),
+            'restructure_template' => $this->restructureTemplate($article, $aiProvider, $providerConfig),
             default => throw new \InvalidArgumentException("Unknown improvement type: {$improvementType}"),
         };
     }
@@ -602,6 +603,42 @@ PROMPT;
             'field' => 'content',
             'value' => trim($newContent),
             'message' => 'Generic transitions replaced with natural connections',
+        ];
+    }
+
+    /**
+     * Restructure AI template patterns into more natural article structure.
+     *
+     * @param  array<string, mixed>  $providerConfig
+     * @return array{field: string, value: string, message: string}
+     */
+    protected function restructureTemplate(Article $article, AiProvider $aiProvider, array $providerConfig): array
+    {
+        $content = $article->content_markdown ?: $article->content;
+
+        $prompt = <<<PROMPT
+Rewrite this article to remove common AI-generated template patterns while keeping all the information intact.
+
+Specific patterns to fix:
+- Remove or rewrite the FAQ section at the end. Integrate the most useful Q&A answers into the main body of the article instead.
+- Remove image placeholder descriptions (lines that read like "Featured image of..." or "Infographic showing..." or "Screenshot-style mockup of..."). These are AI-generated image prompts, not real content.
+- Remove formulaic callout labels like "Key Takeaway:", "Pro Tip:", "Quick Tip:", "Expert Tip:". Integrate those insights naturally into the surrounding paragraphs.
+- Break up the rigid section template where every section follows "intro paragraph → bullet list → concluding paragraph". Vary the structure: some sections can be all prose, some can lead with a list, some can end with a question.
+- Rewrite any soft-sell CTA sections (like "Where [Brand] Fits...") to sound less like a templated product placement.
+
+Rules:
+- Keep ALL factual information and advice from the original
+- Maintain headings, links, and markdown formatting
+- The article should feel like it was written by one person with a consistent voice, not assembled from a template
+- Return the COMPLETE article content
+PROMPT;
+
+        $newContent = $this->callAi($aiProvider, $providerConfig, $prompt."\n\nArticle content:\n".$content);
+
+        return [
+            'field' => 'content',
+            'value' => trim($newContent),
+            'message' => 'AI template patterns restructured for natural flow',
         ];
     }
 

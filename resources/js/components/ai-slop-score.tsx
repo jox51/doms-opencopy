@@ -9,6 +9,7 @@ import {
     ChevronUp,
     Fingerprint,
     GitMerge,
+    LayoutTemplate,
     Link2,
     Loader2,
     ShieldAlert,
@@ -33,6 +34,7 @@ interface AiSlopBreakdown {
     formatting_analysis: AiSlopBreakdownCategory;
     stylometric: AiSlopBreakdownCategory;
     coherence: AiSlopBreakdownCategory;
+    template_patterns: AiSlopBreakdownCategory;
     confidence_adjustment: AiSlopBreakdownCategory;
 }
 
@@ -105,19 +107,19 @@ function getCategoryGrade(score: number, max: number) {
 // Circular progress for AI slop (inverted colors)
 function AiSlopCircularProgress({
     score,
-    size = 140,
+    size = 110,
 }: {
     score: number;
     size?: number;
 }) {
-    const strokeWidth = 10;
+    const strokeWidth = 8;
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
     const offset = circumference - (score / 100) * circumference;
     const grade = getSlopGrade(score);
 
     return (
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-1">
             <div className="relative" style={{ width: size, height: size }}>
                 <svg
                     className="-rotate-90 transform"
@@ -146,14 +148,14 @@ function AiSlopCircularProgress({
                     />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-bold tracking-tight">
+                    <span className="text-3xl font-bold tracking-tight">
                         {score}
                     </span>
                     <span className="text-sm text-muted-foreground">/100</span>
                 </div>
             </div>
             <div className="text-center">
-                <span className={cn('text-lg font-semibold', grade.colorClass)}>
+                <span className={cn('text-base font-semibold', grade.colorClass)}>
                     {grade.label}
                 </span>
                 <p className="text-sm text-muted-foreground">
@@ -182,7 +184,7 @@ function AiSlopCategoryBar({
     const grade = getCategoryGrade(score, max);
 
     return (
-        <div className="space-y-1.5">
+        <div className="space-y-1">
             <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                     <Icon className="h-4 w-4 text-muted-foreground" />
@@ -192,7 +194,7 @@ function AiSlopCategoryBar({
                     {score}/{max}
                 </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
                     className={cn(
                         'h-full rounded-full transition-all duration-500',
@@ -295,6 +297,24 @@ function formatSlopMetrics(
             return count > 0
                 ? `${count} generic transitions · ${density?.toFixed(1)}% density`
                 : 'Transitions sound natural';
+        }
+        case 'template_patterns': {
+            const parts = [];
+            const faqCount = details.faq_question_count as number;
+            const placeholders = details.image_placeholder_count as number;
+            const callouts = details.callout_total_count as number;
+            const bulletRatio = details.bullet_sandwich_ratio as number;
+            if (faqCount > 0) parts.push(`${faqCount} FAQ questions`);
+            if (placeholders > 0)
+                parts.push(`${placeholders} image placeholders`);
+            if (callouts > 0) parts.push(`${callouts} callout patterns`);
+            if (bulletRatio > 0.5)
+                parts.push(
+                    `${Math.round(bulletRatio * 100)}% uniform sections`,
+                );
+            return parts.length > 0
+                ? parts.join(' · ')
+                : 'No template patterns';
         }
         case 'confidence_adjustment': {
             const layers = details.corroborating_layers as number;
@@ -402,6 +422,20 @@ function AiSlopQuickFixes({
         });
     }
 
+    if (
+        breakdown.template_patterns &&
+        breakdown.template_patterns.max > 0 &&
+        breakdown.template_patterns.score / breakdown.template_patterns.max >
+            0.5
+    ) {
+        fixes.push({
+            label: 'Restructure AI template patterns',
+            points: breakdown.template_patterns.score,
+            category: 'template',
+            improvementType: 'restructure_template',
+        });
+    }
+
     const handleFix = async (improvementType: string) => {
         if (!onImprove || !improvementType) return;
         setImprovingType(improvementType);
@@ -499,12 +533,30 @@ function AiSlopPatternDetails({
             number
         >) || {},
     );
+    const imagePlaceholders =
+        (breakdown.template_patterns?.details.image_placeholders as string[]) ||
+        [];
+    const calloutTypes = Object.entries(
+        (breakdown.template_patterns?.details.callout_types as Record<
+            string,
+            number
+        >) || {},
+    );
+    const ctaHeadings =
+        (breakdown.template_patterns?.details.cta_headings as string[]) || [];
+    const faqFound =
+        (breakdown.template_patterns?.details.faq_heading_found as boolean) ||
+        false;
 
     const totalPatterns =
         flaggedWords.length +
         flaggedPhrases.length +
         transitions.length +
-        puffery.length;
+        puffery.length +
+        imagePlaceholders.length +
+        calloutTypes.length +
+        ctaHeadings.length +
+        (faqFound ? 1 : 0);
 
     if (totalPatterns === 0) return null;
 
@@ -611,6 +663,49 @@ function AiSlopPatternDetails({
                             </div>
                         </div>
                     )}
+                    {(imagePlaceholders.length > 0 ||
+                        calloutTypes.length > 0 ||
+                        ctaHeadings.length > 0 ||
+                        faqFound) && (
+                        <div>
+                            <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                                Template Patterns
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {faqFound && (
+                                    <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs text-purple-700 ring-1 ring-inset ring-purple-200 dark:bg-purple-950 dark:text-purple-400 dark:ring-purple-800">
+                                        FAQ section
+                                    </span>
+                                )}
+                                {imagePlaceholders.map((text, i) => (
+                                    <span
+                                        key={i}
+                                        className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs text-purple-700 ring-1 ring-inset ring-purple-200 dark:bg-purple-950 dark:text-purple-400 dark:ring-purple-800"
+                                        title={text}
+                                    >
+                                        Image placeholder
+                                    </span>
+                                ))}
+                                {calloutTypes.map(([type]) => (
+                                    <span
+                                        key={type}
+                                        className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs text-purple-700 ring-1 ring-inset ring-purple-200 dark:bg-purple-950 dark:text-purple-400 dark:ring-purple-800"
+                                    >
+                                        {type.replace('_', ' ')}
+                                    </span>
+                                ))}
+                                {ctaHeadings.map((heading, i) => (
+                                    <span
+                                        key={i}
+                                        className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs text-purple-700 ring-1 ring-inset ring-purple-200 dark:bg-purple-950 dark:text-purple-400 dark:ring-purple-800"
+                                        title={heading}
+                                    >
+                                        Soft-sell CTA
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -682,6 +777,12 @@ export function AiSlopScore({
             data: breakdown?.coherence,
         },
         {
+            key: 'template_patterns',
+            label: 'Template Patterns',
+            icon: LayoutTemplate,
+            data: breakdown?.template_patterns,
+        },
+        {
             key: 'confidence_adjustment',
             label: 'Confidence',
             icon: ShieldAlert,
@@ -690,35 +791,34 @@ export function AiSlopScore({
     ];
 
     return (
-        <div className="space-y-6">
-            {/* Main score display */}
-            <div className="grid gap-6 md:grid-cols-2">
-                <div className="flex items-center justify-center">
-                    <AiSlopCircularProgress score={score} />
-                </div>
+        <div className="space-y-4">
+            {/* Circular gauge - centered on top */}
+            <div className="flex justify-center">
+                <AiSlopCircularProgress score={score} />
+            </div>
 
-                <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-muted-foreground">
-                        Score Breakdown
-                    </h4>
-                    <div className="space-y-4">
-                        {categories.map(
-                            ({ key, label, icon, data }) =>
-                                data && (
-                                    <AiSlopCategoryBar
-                                        key={key}
-                                        label={label}
-                                        score={data.score}
-                                        max={data.max}
-                                        icon={icon}
-                                        metrics={formatSlopMetrics(
-                                            key,
-                                            data.details,
-                                        )}
-                                    />
-                                ),
-                        )}
-                    </div>
+            {/* Score Breakdown - 2-column responsive grid */}
+            <div className="@container">
+                <h4 className="mb-3 text-sm font-semibold text-muted-foreground">
+                    Score Breakdown
+                </h4>
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3 @sm:grid-cols-2">
+                    {categories.map(
+                        ({ key, label, icon, data }) =>
+                            data && (
+                                <AiSlopCategoryBar
+                                    key={key}
+                                    label={label}
+                                    score={data.score}
+                                    max={data.max}
+                                    icon={icon}
+                                    metrics={formatSlopMetrics(
+                                        key,
+                                        data.details,
+                                    )}
+                                />
+                            ),
+                    )}
                 </div>
             </div>
 
