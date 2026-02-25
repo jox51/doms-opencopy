@@ -608,6 +608,15 @@ class ArticleController extends Controller
         $this->authorize('update', $project);
         $this->ensureArticleBelongsToProject($article, $project);
 
+        // Auto-save current editor content before enriching
+        if ($request->has('content')) {
+            $content = $request->input('content');
+            $article->update([
+                'content' => $content,
+                'content_markdown' => $content,
+            ]);
+        }
+
         // Set initial status and dispatch job
         $cacheKey = EnrichArticleJob::statusCacheKey($article->id);
         Cache::put($cacheKey, [

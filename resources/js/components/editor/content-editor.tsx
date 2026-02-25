@@ -8,11 +8,13 @@ import Typography from '@tiptap/extension-typography';
 import Youtube from '@tiptap/extension-youtube';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Markdown } from 'tiptap-markdown';
 import { EditorToolbar } from './editor-toolbar';
 import { ImageBubbleMenu } from './image-bubble-menu';
 import { CustomImage } from './image-extension';
+import { SlashCommand } from './slash-command-extension';
+import { SlashCommandMenu } from './slash-command-menu';
 
 interface YouTubeVideo {
     id: string;
@@ -53,6 +55,7 @@ export function ContentEditor({
     editable = true,
 }: ContentEditorProps) {
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const isInternalUpdate = useRef(false);
 
     const editor = useEditor({
         extensions: [
@@ -97,6 +100,7 @@ export function ContentEditor({
                 transformCopiedText: true,
                 linkify: false,
             }),
+            SlashCommand,
         ],
         content,
         editable,
@@ -106,24 +110,23 @@ export function ContentEditor({
             },
         },
         onUpdate: ({ editor }) => {
+            isInternalUpdate.current = true;
             const markdown = editor.storage.markdown.getMarkdown();
             onChange(markdown);
         },
     });
 
-    // Update content when prop changes (e.g., from external source like enrichment)
+    // Update content when prop changes from external source (e.g., enrichment)
+    // Skip when the change originated from user typing (isInternalUpdate)
     useEffect(() => {
         if (editor) {
-            const currentMarkdown =
-                editor.storage.markdown?.getMarkdown() || '';
-            // Only update if content actually changed (avoiding infinite loops)
-            if (content !== currentMarkdown) {
-                // Use setContent with emitUpdate: false to avoid triggering onChange
-                // The tiptap-markdown extension will parse the markdown automatically
-                editor.commands.setContent(content, {
-                    emitUpdate: false,
-                });
+            if (isInternalUpdate.current) {
+                isInternalUpdate.current = false;
+                return;
             }
+            editor.commands.setContent(content, {
+                emitUpdate: false,
+            });
         }
     }, [content, editor]);
 
@@ -154,7 +157,7 @@ export function ContentEditor({
     }
 
     return (
-        <div className={cn('rounded-lg border', className)}>
+        <div data-editor-container className={cn('rounded-lg border', className)}>
             <div
                 className="sticky top-0 z-50 rounded-t-lg border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
                 style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)' }}
@@ -165,7 +168,7 @@ export function ContentEditor({
                     onSearchYouTube={onSearchYouTube}
                 />
             </div>
-            <div className="relative">
+            <div className="relative" data-slash-command-container>
                 <EditorContent editor={editor} />
                 <ImageBubbleMenu
                     editor={editor}
@@ -173,6 +176,10 @@ export function ContentEditor({
                         onRegenerateImage ? handleRegenerateImage : undefined
                     }
                     isRegenerating={isRegenerating}
+                />
+                <SlashCommandMenu
+                    editor={editor}
+                    onGenerateImage={onGenerateImage}
                 />
             </div>
         </div>

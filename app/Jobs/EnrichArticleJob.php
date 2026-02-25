@@ -70,7 +70,7 @@ class EnrichArticleJob implements ShouldQueue
             if ($imageProvider) {
                 try {
                     $imageResult = $imageService->processArticleImages($this->article, $imageProvider);
-                    $results['images']['processed'] = $imageResult['processed'] ?? 0;
+                    $results['images']['processed'] = $imageResult['images_generated'] ?? 0;
                     $results['images']['errors'] = $imageResult['errors'] ?? [];
                 } catch (\Exception $e) {
                     $results['images']['errors'][] = $e->getMessage();

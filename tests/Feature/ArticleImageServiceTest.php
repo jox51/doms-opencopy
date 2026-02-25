@@ -57,6 +57,44 @@ describe('findImagePlaceholders', function () {
         expect($placeholders[0]['style'])->toBe('illustration');
     });
 
+    it('finds placeholders with semicolon separator', function () {
+        $service = app(ArticleImageService::class);
+
+        $content = 'Text [IMAGE: A TikTok livestreamer in a home studio with phone, ring light, and chat overlay; style: illustration] more text';
+
+        $placeholders = $service->findImagePlaceholders($content);
+
+        expect($placeholders)->toHaveCount(1);
+        expect($placeholders[0]['description'])->toBe('A TikTok livestreamer in a home studio with phone, ring light, and chat overlay');
+        expect($placeholders[0]['style'])->toBe('illustration');
+    });
+
+    it('finds placeholders without a style and defaults to illustration', function () {
+        $service = app(ArticleImageService::class);
+
+        $content = 'Text [IMAGE: Tiktok creator who is sad after pushing boundaries] more text';
+
+        $placeholders = $service->findImagePlaceholders($content);
+
+        expect($placeholders)->toHaveCount(1);
+        expect($placeholders[0]['description'])->toBe('Tiktok creator who is sad after pushing boundaries');
+        expect($placeholders[0]['style'])->toBe('illustration');
+    });
+
+    it('does not double-match placeholders with style when no-style pattern also runs', function () {
+        $service = app(ArticleImageService::class);
+
+        $content = '[IMAGE: A coffee shop – style: cinematic] and [IMAGE: A sad creator]';
+
+        $placeholders = $service->findImagePlaceholders($content);
+
+        expect($placeholders)->toHaveCount(2);
+        expect($placeholders[0]['description'])->toBe('A coffee shop');
+        expect($placeholders[0]['style'])->toBe('cinematic');
+        expect($placeholders[1]['description'])->toBe('A sad creator');
+        expect($placeholders[1]['style'])->toBe('illustration');
+    });
+
     it('finds multiple placeholders', function () {
         $service = app(ArticleImageService::class);
 
@@ -213,6 +251,19 @@ MD;
         expect($placeholders[0]['style'])->toBe('cinematic');
         expect($placeholders[1]['type'])->toBe('infographic');
         expect($placeholders[2]['type'])->toBe('diagram');
+    });
+
+    it('marks explicit_style correctly for placeholders with and without style', function () {
+        $service = app(ArticleImageService::class);
+
+        $content = '[IMAGE: With style - style: watercolor] and [IMAGE: Without style] and [INFOGRAPHIC: A diagram]';
+
+        $placeholders = $service->findImagePlaceholders($content);
+
+        expect($placeholders)->toHaveCount(3);
+        expect($placeholders[0]['explicit_style'])->toBeTrue();
+        expect($placeholders[1]['explicit_style'])->toBeFalse();
+        expect($placeholders[2]['explicit_style'])->toBeFalse();
     });
 
     it('handles visual asset placeholders case-insensitively', function () {
@@ -421,7 +472,7 @@ describe('processArticleImages', function () {
         expect($image->metadata['brand_color'])->toBe('#10B981');
     });
 
-    it('auto-mixes styles for IMAGE placeholders when auto_mix_styles is enabled', function () {
+    it('auto-mixes styles only for non-explicit placeholders when auto_mix_styles is enabled', function () {
         $user = User::factory()->create();
         $aiProvider = AiProvider::factory()->create([
             'user_id' => $user->id,
@@ -435,10 +486,10 @@ describe('processArticleImages', function () {
         $keyword = Keyword::factory()->create(['project_id' => $project->id]);
 
         $content = implode("\n\n", [
-            '[IMAGE: First image - style: illustration]',
-            '[IMAGE: Second image - style: illustration]',
-            '[IMAGE: Third image - style: illustration]',
-            '[IMAGE: Fourth image - style: illustration]',
+            '[IMAGE: First image]',
+            '[IMAGE: Second image]',
+            '[IMAGE: Third image]',
+            '[IMAGE: Fourth image]',
         ]);
 
         $article = Article::factory()->create([
@@ -459,6 +510,47 @@ describe('processArticleImages', function () {
 
         // AUTO_MIX_STYLES = ['illustration', 'cinematic', 'stock_photo', 'editorial']
         expect($styles)->toBe(['illustration', 'cinematic', 'stock_photo', 'editorial']);
+    });
+
+    it('respects explicit styles and only auto-mixes non-explicit ones', function () {
+        $user = User::factory()->create();
+        $aiProvider = AiProvider::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'anthropic',
+            'is_active' => true,
+        ]);
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'auto_mix_styles' => true,
+        ]);
+        $keyword = Keyword::factory()->create(['project_id' => $project->id]);
+
+        $content = implode("\n\n", [
+            '[IMAGE: First image]',
+            '[IMAGE: Second image - style: watercolor]',
+            '[IMAGE: Third image]',
+            '[IMAGE: Fourth image - style: cinematic]',
+        ]);
+
+        $article = Article::factory()->create([
+            'project_id' => $project->id,
+            'keyword_id' => $keyword->id,
+            'content' => $content,
+            'content_markdown' => $content,
+        ]);
+
+        $service = app(ArticleImageService::class);
+        $service->processArticleImages($article, $aiProvider);
+
+        $images = Image::where('article_id', $article->id)->orderBy('id')->get();
+
+        expect($images)->toHaveCount(4);
+
+        $styles = $images->pluck('metadata.style')->toArray();
+
+        // findImagePlaceholders returns explicit-style matches first, then non-explicit ones.
+        // So order is: watercolor (explicit), cinematic (explicit), illustration (auto-mix #1), cinematic (auto-mix #2)
+        expect($styles)->toBe(['watercolor', 'cinematic', 'illustration', 'cinematic']);
     });
 
     it('preserves embedded styles when auto_mix_styles is disabled', function () {
@@ -487,7 +579,62 @@ describe('processArticleImages', function () {
         expect($image->metadata['style'])->toBe('watercolor');
     });
 
-    it('auto-mixes styles for both IMAGE and visual asset placeholders', function () {
+    it('handles backslash-escaped placeholder brackets from markdown serializer', function () {
+        $user = User::factory()->create();
+        $aiProvider = AiProvider::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'anthropic',
+            'is_active' => true,
+        ]);
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'auto_mix_styles' => false,
+        ]);
+        $article = Article::factory()->create([
+            'project_id' => $project->id,
+            'content' => 'Text \[IMAGE: Coffee shop – style: illustration\] more text',
+            'content_markdown' => 'Text \[IMAGE: Coffee shop – style: illustration\] more text',
+        ]);
+
+        $service = app(ArticleImageService::class);
+        $result = $service->processArticleImages($article, $aiProvider);
+
+        expect($result['images_generated'])->toBe(1);
+
+        $article->refresh();
+        // Should not have orphan backslash before the image markdown
+        expect($article->content_markdown)->not->toContain('\![');
+        expect($article->content_markdown)->toContain('![Coffee shop]');
+    });
+
+    it('handles escaped brackets for placeholders without style', function () {
+        $user = User::factory()->create();
+        $aiProvider = AiProvider::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'anthropic',
+            'is_active' => true,
+        ]);
+        $project = Project::factory()->create([
+            'user_id' => $user->id,
+            'auto_mix_styles' => false,
+        ]);
+        $article = Article::factory()->create([
+            'project_id' => $project->id,
+            'content' => 'Before \[IMAGE: Sad creator\] after',
+            'content_markdown' => 'Before \[IMAGE: Sad creator\] after',
+        ]);
+
+        $service = app(ArticleImageService::class);
+        $result = $service->processArticleImages($article, $aiProvider);
+
+        expect($result['images_generated'])->toBe(1);
+
+        $article->refresh();
+        expect($article->content_markdown)->not->toContain('\![');
+        expect($article->content_markdown)->toContain('![Sad creator]');
+    });
+
+    it('auto-mixes styles for non-explicit IMAGE and visual asset placeholders', function () {
         $user = User::factory()->create();
         $aiProvider = AiProvider::factory()->create([
             'user_id' => $user->id,
@@ -500,7 +647,8 @@ describe('processArticleImages', function () {
         ]);
         $keyword = Keyword::factory()->create(['project_id' => $project->id]);
 
-        $content = "[IMAGE: Hero shot - style: illustration]\n\n[INFOGRAPHIC: Step process]\n\n[IMAGE: Team photo - style: illustration]";
+        // Hero shot has explicit style (preserved), infographic and team photo are non-explicit (auto-mixed)
+        $content = "[IMAGE: Hero shot - style: watercolor]\n\n[INFOGRAPHIC: Step process]\n\n[IMAGE: Team photo]";
 
         $article = Article::factory()->create([
             'project_id' => $project->id,
@@ -517,8 +665,8 @@ describe('processArticleImages', function () {
         expect($images)->toHaveCount(3);
 
         $styles = $images->pluck('metadata.style')->toArray();
-        // All three rotate: illustration, cinematic, stock_photo
-        expect($styles)->toBe(['illustration', 'cinematic', 'stock_photo']);
+        // Explicit watercolor preserved, non-explicit infographic and image auto-mix: illustration, cinematic
+        expect($styles)->toBe(['watercolor', 'illustration', 'cinematic']);
     });
 });
 
