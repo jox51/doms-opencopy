@@ -916,7 +916,7 @@ function StatusBadge({
         return <span className="text-muted-foreground">No response</span>;
     }
 
-    let colorClass = 'text-gray-600';
+    let colorClass = 'text-muted-foreground';
     if (code >= 200 && code < 300) {
         colorClass = 'text-green-600 dark:text-green-400';
     } else if (code >= 400 && code < 500) {

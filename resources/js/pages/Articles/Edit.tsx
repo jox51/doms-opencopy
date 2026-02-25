@@ -567,9 +567,10 @@ export default function Edit({
     async function handleEnrichContent() {
         setIsEnriching(true);
         try {
+            // Send current editor content so it's saved before enrichment
             const response = await axios.post(
                 `/projects/${project.id}/articles/${article.id}/enrich`,
-                {},
+                { content: data.content },
                 {
                     headers: {
                         'X-CSRF-TOKEN': csrf_token,
@@ -873,9 +874,9 @@ export default function Edit({
                             <CardContent>
                                 <p className="mb-4 text-sm text-muted-foreground">
                                     This will scan your content for
-                                    [IMAGE_PLACEHOLDER] and [VIDEO_PLACEHOLDER]
-                                    tags and replace them with generated images
-                                    or embedded videos.
+                                    [IMAGE: ...] and [VIDEO: ...]
+                                    placeholders and replace them with generated
+                                    images or embedded videos.
                                 </p>
                                 <Button
                                     className="w-full"

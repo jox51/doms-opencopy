@@ -433,7 +433,8 @@ PROMPT;
         $prompt .= "- Do NOT repeat information in different words\n";
         $prompt .= "- Every sentence must add unique value\n";
         $prompt .= "- If the topic is fully covered in fewer words, that's fine\n";
-        $prompt .= "- Exceeding {$maxWords} words likely means you're adding filler\n\n";
+        $prompt .= "- Exceeding {$maxWords} words likely means you're adding filler\n";
+        $prompt .= "- Do NOT include a word count or any meta commentary in the article output\n\n";
         $prompt .= "Suggested structure:\n";
         $prompt .= "- Introduction: 100-150 words (get to the point quickly)\n";
         $prompt .= "- Each main section (H2): 150-300 words of substantive content\n";
@@ -767,6 +768,9 @@ PROMPT;
             $title = trim($headingMatch[1]);
         }
 
+        // Strip AI-appended word count lines like "(Word count: 1528)"
+        $content = preg_replace('/\n*\(Word count:?\s*\d+\)\s*$/i', '', $content);
+
         if (empty($metaDescription)) {
             $plainText = strip_tags($content);
             $metaDescription = Str::limit($plainText, 155);
@@ -775,7 +779,7 @@ PROMPT;
         return [
             'title' => $title,
             'meta_description' => $metaDescription,
-            'content' => $content,
+            'content' => trim($content),
         ];
     }
 

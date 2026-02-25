@@ -20,9 +20,15 @@ class ArticleImageService
     /**
      * Regex pattern to match image placeholders with explicit style.
      * Format: [IMAGE: description – style: stylename] or [IMAGE: description - style: stylename]
-     * Also accepts comma separator: [IMAGE: description, style: stylename]
+     * Also accepts comma or semicolon separator: [IMAGE: description, style: stylename] or [IMAGE: description; style: stylename]
      */
-    protected const PLACEHOLDER_PATTERN = '/\[IMAGE:\s*(.+?)\s*(?:–|-|,)\s*style:\s*([^\]]+?)\s*\]/iu';
+    protected const PLACEHOLDER_PATTERN = '/\[IMAGE:\s*(.+?)\s*(?:–|-|;|,)\s*style:\s*([^\]]+?)\s*\]/iu';
+
+    /**
+     * Regex pattern to match image placeholders without a style.
+     * Format: [IMAGE: description] — defaults to 'illustration' style.
+     */
+    protected const PLACEHOLDER_NO_STYLE_PATTERN = '/\[IMAGE:\s*(.+?)\s*\]/iu';
 
     /**
      * Regex pattern to match visual asset placeholders without explicit style.
@@ -76,6 +82,10 @@ class ArticleImageService
         // introduced by the markdown serializer (e.g., !\[... -> ![...)
         $content = $this->fixEscapedImageSyntax($content);
 
+        // Fix escaped brackets in placeholder syntax from the markdown serializer
+        // (e.g., \[IMAGE: desc\] -> [IMAGE: desc])
+        $content = $this->fixEscapedPlaceholderSyntax($content);
+
         $placeholders = $this->findImagePlaceholders($content);
 
         if (empty($placeholders)) {
@@ -96,7 +106,8 @@ class ArticleImageService
                 $style = $placeholder['style'];
 
                 // Auto-mix: rotate through curated styles for visual diversity
-                if ($autoMix) {
+                // Respect explicitly user-specified styles
+                if ($autoMix && ! $placeholder['explicit_style']) {
                     $style = self::AUTO_MIX_STYLES[$mixIndex % count(self::AUTO_MIX_STYLES)];
                     $mixIndex++;
                 }
@@ -136,20 +147,39 @@ class ArticleImageService
     /**
      * Find all image placeholders in content.
      *
-     * @return array<array{full_match: string, description: string, style: string, type: string}>
+     * @return array<array{full_match: string, description: string, style: string, type: string, explicit_style: bool}>
      */
     public function findImagePlaceholders(string $content): array
     {
         $placeholders = [];
 
-        // Match [IMAGE: description – style: stylename] format
+        // Match [IMAGE: description – style: stylename] format (with explicit style)
         preg_match_all(self::PLACEHOLDER_PATTERN, $content, $matches, PREG_SET_ORDER);
+        $matchedStyledPlaceholders = [];
         foreach ($matches as $match) {
+            $matchedStyledPlaceholders[] = $match[0];
             $placeholders[] = [
                 'full_match' => $match[0],
                 'description' => trim($match[1]),
                 'style' => $this->normalizeStyle($match[2]),
                 'type' => 'image',
+                'explicit_style' => true,
+            ];
+        }
+
+        // Match [IMAGE: description] format (without style, defaults to illustration)
+        preg_match_all(self::PLACEHOLDER_NO_STYLE_PATTERN, $content, $matches, PREG_SET_ORDER);
+        foreach ($matches as $match) {
+            // Skip if already matched by the styled pattern
+            if (in_array($match[0], $matchedStyledPlaceholders)) {
+                continue;
+            }
+            $placeholders[] = [
+                'full_match' => $match[0],
+                'description' => trim($match[1]),
+                'style' => 'illustration',
+                'type' => 'image',
+                'explicit_style' => false,
             ];
         }
 
@@ -167,6 +197,7 @@ class ArticleImageService
                 'description' => $fullDescription,
                 'style' => self::VISUAL_ASSET_STYLES[$assetType] ?? 'illustration',
                 'type' => $assetType,
+                'explicit_style' => false,
             ];
         }
 
@@ -224,6 +255,28 @@ class ArticleImageService
 
         // Fix \]( -> ]( (escaped closing bracket before URL)
         $content = preg_replace('/\\\\\]\(/', '](', $content);
+
+        return $content;
+    }
+
+    /**
+     * Fix escaped brackets in placeholder syntax from the markdown serializer.
+     *
+     * TipTap's prosemirror-markdown serializer escapes [ and ] in text nodes,
+     * turning [IMAGE: desc] into \[IMAGE: desc\]. This causes image replacement
+     * to leave orphan backslashes, producing \![desc](url) which renders as a link.
+     */
+    protected function fixEscapedPlaceholderSyntax(string $content): string
+    {
+        // Fix \[IMAGE: -> [IMAGE: and similar placeholder opening brackets
+        $content = preg_replace(
+            '/\\\\(\[(IMAGE|INFOGRAPHIC|DIAGRAM|CHART|ILLUSTRATION|FLOWCHART|GRAPH|SCREENSHOT|MOCKUP):)/i',
+            '$1',
+            $content
+        );
+
+        // Fix \] at end of placeholders (not followed by ( which is image/link syntax)
+        $content = preg_replace('/\\\\\](?!\()/', ']', $content);
 
         return $content;
     }
